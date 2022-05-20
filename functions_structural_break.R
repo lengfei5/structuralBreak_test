@@ -122,10 +122,14 @@ structural_break_test = function(tt = c(1:21), wt, ko, rm.outliers = FALSE, meth
     ## fitting wt
     fit1 = lm(data.wt ~ tt.wt)
     ee1 = sum(fit1$residuals^2)
+    ss1 = sqrt(ee1/n1)
     
     pred2 = predict(fit1, data.frame(tt.wt = tt.ko))
     
     ee2 = sum((pred2 - data.ko)^2)
+    ss2 = sqrt(ee2/n2)
+    
+    barplot(c(ss1, ss2), names.arg = c('wt', 'ko'), col = c('darkblue', 'darkred'), ylab = 'estimated sigma')
     
     hpt = ee2/(ee1/(n1-k))
     pval = pchisq(hpt, n2, lower.tail = FALSE, log.p = FALSE)
@@ -195,6 +199,7 @@ structural_break_test = function(tt = c(1:21), wt, ko, rm.outliers = FALSE, meth
     
   }
   
+  cat('pval --', pval, '\n')
   return(pval)
   
 }
