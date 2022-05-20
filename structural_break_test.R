@@ -37,5 +37,6 @@ as_tibble(aa) %>% gather(ax, lengths, 2:21) %>%
 aa = as.matrix(aa)
 
 source('functions_structural_break.R')
-chow_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21])
+
+chow_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21], rm.outliers = TRUE)
 

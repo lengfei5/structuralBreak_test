@@ -83,13 +83,16 @@ chow_test = function(tt = c(1:21), wt, ko, rm.outliers = TRUE)
   n2 = length(data.ko)
   n = length(wt.ko)
   
+  cat('------\n')
+  cat('F_CPT in chow test is used \n')
+  cat('-------\n')
+  
   F1 = (ee-ee1)/n2/(ee1/(n1-k)) # F_CPT 
   pval.F1 = pf(F1, n2, (n1-k), lower.tail = FALSE, log.p = FALSE)
   
+  #cat('F_DBT is used \n')
   F2 = (ee-ee1-ee2)/k/((ee1+ee2)/(n - 2*k)) # F_CBT
   pval.F2 = pf(F2, k, (n - 2*k), lower.tail = FALSE, log.p = FALSE)
-  
-  
   
   plot(tt.wt, data.wt, ylim = range(wt.ko), col = 'darkblue')
   abline(fit1$coefficients, col = 'darkblue', lwd = 2.0)
