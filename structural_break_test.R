@@ -34,9 +34,13 @@ as_tibble(aa) %>% gather(ax, lengths, 2:21) %>%
   scale_fill_manual(values=c('#999999','#E69F00')) +
   labs( x = 'vertebrae lengths', y = 'lengths')
   
+
 aa = as.matrix(aa)
 
 source('functions_structural_break.R')
 
-chow_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21], rm.outliers = TRUE)
+structural_break_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21], rm.outliers = TRUE, method = 'chow_test')
 
+structural_break_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21], rm.outliers = FALSE, method = 'hpt_test')
+
+structural_break_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21], rm.outliers = FALSE, method = 'mz_test')

@@ -12,9 +12,11 @@ index.outliers = function(data.xx)
   index = which(data.xx<lower|data.xx>upper)
 }
 
-chow_test = function(tt = c(1:21), wt, ko, rm.outliers = TRUE)
+
+structural_break_test = function(tt = c(1:21), wt, ko, rm.outliers = FALSE, method = 'chow.test', 
+                                 nBoot = 10000)
 {
-  # tt = aa[, 1]; wt = aa[, c(2:11)]; ko = aa[, 12:21]
+  # tt = aa[, 1]; wt = aa[, c(2:11)]; ko = aa[, 12:21]; rm.outliers = FALSE; nBoot = 10000;
   tt  = as.numeric(tt);
   wt = as.matrix(wt)
   ko = as.matrix(ko)
@@ -55,51 +57,146 @@ chow_test = function(tt = c(1:21), wt, ko, rm.outliers = TRUE)
     cat(length(tt.ko), ' tt -- ', length(data.ko), ' ko data points after outlier removal \n')
   }
   
-  
   wt.ko = c(data.wt, data.ko)
   tt.wt.ko = c(tt.wt, tt.ko)
   cat(length(tt.wt.ko), ' tt -- ', length(wt.ko), ' pool of wt and ko \n' )
   
+  if(method == 'chow_test'){
+    ##########################################
+    # the chow test here is modified based on the 
+    # https://github.com/lengfei5/GachonProt/blob/main/scripts/proteomics_functions.R
+    # and the paper 
+    # https://www.researchgate.net/publication/336476565_Performance_of_Methods_Determining_Structural_Break_in_Linear_Regression_Models
+    ##########################################
+    cat('---------------------------------------\n')
+    cat('chow_test for coefficients is performed \n ')
+    
+    k = 2 # nb of parameteres
+    n1 = length(data.wt)
+    n2 = length(data.ko)
+    n = length(wt.ko)
+    
+    ## fitting the pool of wt and ko
+    fit = lm(wt.ko ~ tt.wt.ko)
+    ee = sum(fit$residuals^2)
+    
+    ## fitting wt
+    fit1 = lm(data.wt ~ tt.wt)
+    ee1 = sum(fit1$residuals^2)
+    
+    # fit ko 
+    fit2 = lm(data.ko ~ tt.ko)
+    ee2 = sum(fit2$residuals^2)
+  
+    cat('F_CPT in chow test is used \n')
+    
+    cat('---------------------------------------\n')
+    
+    F1 = (ee-ee1)/n2/(ee1/(n1-k)) # F_CPT 
+    pval.F1 = pf(F1, n2, (n1-k), lower.tail = FALSE, log.p = FALSE)
+    
+    #cat('F_DBT is used \n')
+    F2 = (ee-ee1-ee2)/k/((ee1+ee2)/(n - 2*k)) # F_CBT
+    pval.F2 = pf(F2, k, (n - 2*k), lower.tail = FALSE, log.p = FALSE)
+    
+    plot(tt.wt, data.wt, ylim = range(wt.ko), col = 'darkblue')
+    abline(fit1$coefficients, col = 'darkblue', lwd = 2.0)
+    points(tt.ko, data.ko, col = 'red')
+    abline(fit$coefficients, col = 'red', lwd = 2.0)
+    #print(pval.wt.ko)
+    #return(pval.F1)
+    pval = pval.F2
+    
+  }
+  
+  if(method == 'hpt_test'){
+    
+    cat('---------------------------------------\n')
+    cat('hpt_test for variance is performed \n ')
+    
+    k = 2 # nb of parameteres
+    n1 = length(data.wt)
+    n2 = length(data.ko)
+    n = length(wt.ko)
+    
+    ## fitting wt
+    fit1 = lm(data.wt ~ tt.wt)
+    ee1 = sum(fit1$residuals^2)
+    
+    pred2 = predict(fit1, data.frame(tt.wt = tt.ko))
+    
+    ee2 = sum((pred2 - data.ko)^2)
+    
+    hpt = ee2/(ee1/(n1-k))
+    pval = pchisq(hpt, n2, lower.tail = FALSE, log.p = FALSE)
+    
+    cat('---------------------------------------\n')
+    
+  }
+  
   ##########################################
-  # the chow test here is modified based on the 
-  # https://github.com/lengfei5/GachonProt/blob/main/scripts/proteomics_functions.R
-  # and the paper 
-  # https://www.researchgate.net/publication/336476565_Performance_of_Methods_Determining_Structural_Break_in_Linear_Regression_Models
+  # mz test from the same paper mentioned above
+  # some original code from 
+  # https://github.com/myaseen208/SupMZ/blob/master/R/supmz.R
   ##########################################
-  ## fitting the pool of wt and ko
-  fit = lm(wt.ko ~ tt.wt.ko)
-  ee = sum(fit$residuals^2)
+  if(method == 'mz_test')
+  {
+    cat('---------------------------------------\n')
+    cat('mz_test for coefficients and variance is performed \n ')
+    
+    k = 2 # nb of parameteres
+    n1 = length(data.wt)
+    n2 = length(data.ko)
+    n = length(wt.ko)
+    
+    ## fitting the pool of wt and ko
+    fit = lm(wt.ko ~ tt.wt.ko)
+    ss =  sigma(fit)^2
+    
+    
+    ## fitting wt
+    fit1 = lm(data.wt ~ tt.wt)
+    ss1 = sigma(fit1)^2
+    
+    # fit ko 
+    fit2 = lm(data.ko ~ tt.ko)
+    ss2 = sigma(fit2)^2
+    mz = (n - k) * log(ss) - ((n1 - k) * log(ss1) + (n2 - k)*log(ss2))
+    
+    ## simulate the mz distribution under null hypothesis
+    fitted <- as.numeric(fitted(fit))
+    cat('--- start simulation for null hypothesis -- \n')
+    # nBoot = 10000
+    mzs = rep(NA, nBoot)
+    set.seed(seed = 2022)
+    for(i in 1:nBoot)
+    {
+      if(i%%1000 == 0) cat(i, '\n')
+      data.sim = fitted + rnorm(n = length(wt.ko), mean = 0, sd = sqrt(ss))
+      data1 = data.sim[1:n1]
+      data2 = data.sim[c((n1+1):length(wt.ko))]
+      
+      fm0 = lm(data.sim ~ tt.wt.ko)
+      ss00 = sigma(fm0)^2
+      fm1 = lm(data1 ~ tt.wt)
+      ss01 = sigma(fm1)^2
+      fm2 = lm(data2 ~ tt.ko)
+      ss02 = sigma(fm2)^2
+      mzs[i] = (n-k)*log(ss00) - ((n1-k)*log(ss01) + (n2 -k)*log(ss02))
+      
+    }
+    
+    Fn = ecdf(mzs)
+    pval = 1 - Fn(mz)
+    
+    hist(mzs, xlim = range(mzs, mz), xlab = 'MZ statistics')
+    abline(v = mz, lwd = 2.0, col = 'red')
+    cat('---------------------------------------\n')
+    
+  }
   
-  ## fitting wt
-  fit1 = lm(data.wt ~ tt.wt)
-  ee1 = sum(fit1$residuals^2)
-  
-  # fit ko 
-  fit2 = lm(data.ko ~ tt.ko)
-  ee2 = sum(fit2$residuals^2)
-  
-  k = 2 # nb of parameteres
-  n1 = length(data.wt)
-  n2 = length(data.ko)
-  n = length(wt.ko)
-  
-  cat('------\n')
-  cat('F_CPT in chow test is used \n')
-  cat('-------\n')
-  
-  F1 = (ee-ee1)/n2/(ee1/(n1-k)) # F_CPT 
-  pval.F1 = pf(F1, n2, (n1-k), lower.tail = FALSE, log.p = FALSE)
-  
-  #cat('F_DBT is used \n')
-  F2 = (ee-ee1-ee2)/k/((ee1+ee2)/(n - 2*k)) # F_CBT
-  pval.F2 = pf(F2, k, (n - 2*k), lower.tail = FALSE, log.p = FALSE)
-  
-  plot(tt.wt, data.wt, ylim = range(wt.ko), col = 'darkblue')
-  abline(fit1$coefficients, col = 'darkblue', lwd = 2.0)
-  points(tt.ko, data.ko, col = 'red')
-  abline(fit$coefficients, col = 'red', lwd = 2.0)
-  
-  #print(pval.wt.ko)
-  return(pval.F1)
+  return(pval)
   
 }
+
+
