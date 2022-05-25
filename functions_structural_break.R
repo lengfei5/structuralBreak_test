@@ -17,6 +17,10 @@ structural_break_test = function(tt = c(1:21), wt, ko, rm.outliers = FALSE, meth
                                  nBoot = 10000)
 {
   # tt = aa[, 1]; wt = aa[, c(2:11)]; ko = aa[, 12:21]; rm.outliers = FALSE; nBoot = 10000;
+  
+  ##########################################
+  # data cleaning (outlier removal if true)
+  ##########################################
   tt  = as.numeric(tt);
   wt = as.matrix(wt)
   ko = as.matrix(ko)
@@ -99,14 +103,30 @@ structural_break_test = function(tt = c(1:21), wt, ko, rm.outliers = FALSE, meth
     F2 = (ee-ee1-ee2)/k/((ee1+ee2)/(n - 2*k)) # F_CBT
     pval.F2 = pf(F2, k, (n - 2*k), lower.tail = FALSE, log.p = FALSE)
     
-    plot(tt.wt, data.wt, ylim = range(wt.ko), col = 'darkblue')
-    abline(fit1$coefficients, col = 'darkblue', lwd = 2.0)
-    points(tt.ko, data.ko, col = 'red')
-    abline(fit$coefficients, col = 'red', lwd = 2.0)
-    #print(pval.wt.ko)
-    #return(pval.F1)
     pval = pval.F2
     
+    ## plot the fitting
+    cols = c("#00BFC4","#F8766D")
+    plt = data.frame(rbind(cbind(tt.wt, data.wt), cbind(tt.ko, data.ko)), condition = c(rep('wt', length(tt.wt)), rep('ko', length(tt.ko)))) %>%
+    as_tibble() %>%
+      rename(tt = tt.wt, lengths = data.wt) %>%
+      ggplot(aes(x = tt, y = lengths,  group=condition, color = condition)) + 
+      geom_point() +
+      #geom_boxplot()
+      theme_classic() +
+      theme(axis.text.x = element_text(size = 14), 
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title = element_text(size = 15),
+            legend.text = element_text(size=15),
+            legend.title = element_text(size = 15)) +
+      scale_color_manual(values=cols) +
+      labs( x = 'vertebrae lengths', y = 'lengths') + 
+      geom_abline(slope = fit1$coefficients[2], intercept = fit1$coefficients[1], lwd = 1.5, color = cols[1]) +
+      geom_abline(slope = fit2$coefficients[2], intercept = fit2$coefficients[1], lwd = 1.5, color = cols[2]) 
+    
+   plot(plt)
+   
   }
   
   if(method == 'hpt_test'){
@@ -129,12 +149,32 @@ structural_break_test = function(tt = c(1:21), wt, ko, rm.outliers = FALSE, meth
     ee2 = sum((pred2 - data.ko)^2)
     ss2 = sqrt(ee2/n2)
     
-    barplot(c(ss1, ss2), names.arg = c('wt', 'ko'), col = c('darkblue', 'darkred'), ylab = 'estimated sigma')
-    
     hpt = ee2/(ee1/(n1-k))
     pval = pchisq(hpt, n2, lower.tail = FALSE, log.p = FALSE)
     
     cat('---------------------------------------\n')
+    
+    cols = c("#00BFC4","#F8766D")
+    barplot(c(ss1, ss2), names.arg = c('wt', 'ko'), col = c('darkblue', 'darkred'), ylab = 'estimated sigma')
+    
+    
+    plt = data.frame(sigma = c(ss1, ss2), condition = c('wt', 'ko')) %>%
+      as_tibble() %>% 
+      mutate(condition = factor(condition, levels = c('wt', 'ko'))) %>%
+      ggplot(aes(x = condition, y = sigma,  group=condition, fill = condition)) + 
+      #geom_point() +
+      geom_bar(stat="identity") + 
+      theme_classic() +
+      theme(axis.text.x = element_text(size = 14), 
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title = element_text(size = 15),
+            legend.text = element_text(size=15),
+            legend.title = element_text(size = 15)) +
+      scale_color_manual(values=cols) +
+      labs( x = 'vertebrae lengths', y = 'estimated sigma (sqrt variance)')
+   
+    plot(plt)
     
   }
   

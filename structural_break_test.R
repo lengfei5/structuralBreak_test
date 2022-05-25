@@ -39,8 +39,8 @@ aa = as.matrix(aa)
 
 source('functions_structural_break.R')
 
-structural_break_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21], rm.outliers = TRUE, method = 'chow_test')
+structural_break_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21], rm.outliers = FALSE, method = 'chow_test')
 
 structural_break_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21], rm.outliers = FALSE, method = 'hpt_test')
 
-structural_break_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21], rm.outliers = FALSE, method = 'mz_test')
+#structural_break_test(tt = aa[, 1], wt = aa[, c(2:11)], ko = aa[, 12:21], rm.outliers = FALSE, method = 'mz_test')
